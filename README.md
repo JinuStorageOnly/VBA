@@ -1,66 +1,59 @@
-You can add text to multiple PDF invoices using a tool like Python with the PyPDF2 or reportlab libraries. Here's a simple script using PyPDF2 to add a watermark or text stamp to all pages of each PDF:
+import os
+from PyPDF2 import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from io import BytesIO
 
-1. **Install PyPDF2** (if not already installed):
-   ```bash
-   pip install PyPDF2
-   ```
+def add_text_to_pdf(input_pdf_path, output_pdf_path, text, x=100, y=100):
+    # Create a PDF with the text to add
+    packet = BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
+    can.drawString(x, y, text)
+    can.save()
 
-2. **Script to add text to PDFs**:
-   ```python
-   import os
-   from PyPDF2 import PdfReader, PdfWriter
-   from PyPDF2.generic import NameObject, TextStringObject
+    # Move the packet's data to the beginning
+    packet.seek(0)
 
-   def add_text_to_pdf(input_pdf, output_pdf, text):
-       reader = PdfReader(input_pdf)
-       writer = PdfWriter()
-       
-       # Iterate through all the pages
-       for i in range(len(reader.pages)):
-           page = reader.pages[i]
-           
-           # Add text to a specific location (example at top of the page)
-           page.merge_page(
-               PdfReader("watermark.pdf").pages[0]
-           )
-           
-           # Add text as metadata (an alternative way)
-           page.add_annotation({
-               NameObject("/Type"): NameObject("/Annot"),
-               NameObject("/Subtype"): NameObject("/Text"),
-               NameObject("/Contents"): TextStringObject(text)
-           })
-           
-           writer.add_page(page)
-       
-       # Write to a new PDF
-       with open(output_pdf, "wb") as out:
-           writer.write(out)
+    # Read the created PDF
+    new_pdf = PdfReader(packet)
 
-   # Path to your directory containing PDFs
-   pdf_dir = "/path/to/your/pdfs"
+    # Read the existing PDF
+    existing_pdf = PdfReader(input_pdf_path)
+    output = PdfWriter()
 
-   # Output directory
-   output_dir = "/path/to/output/pdfs"
+    # Add the text to each page of the original PDF
+    for page_number in range(len(existing_pdf.pages)):
+        page = existing_pdf.pages[page_number]
 
-   # Text to add
-   text_to_add = "ID: XYZ123"
+        # Merge the new PDF (with text) onto the existing page
+        page.merge_page(new_pdf.pages[0])
 
-   # Ensure output directory exists
-   if not os.path.exists(output_dir):
-       os.makedirs(output_dir)
+        # Add the modified page to the output
+        output.add_page(page)
 
-   # Process all PDFs in the directory
-   for pdf_file in os.listdir(pdf_dir):
-       if pdf_file.endswith(".pdf"):
-           input_pdf_path = os.path.join(pdf_dir, pdf_file)
-           output_pdf_path = os.path.join(output_dir, pdf_file)
-           add_text_to_pdf(input_pdf_path, output_pdf_path, text_to_add)
+    # Write the final PDF to a file
+    with open(output_pdf_path, "wb") as outputStream:
+        output.write(outputStream)
 
-   print("Text added to all PDFs.")
-   ```
+def process_pdfs(input_directory, output_directory, text):
+    # Ensure the output directory exists
+    os.makedirs(output_directory, exist_ok=True)
 
-3. **Create a watermark.pdf**:
-   Create a PDF file with the text "ID: XYZ123" placed where you want it to appear on your invoices. You can use tools like Adobe Acrobat, online PDF editors, or even reportlab in Python to create this watermark file.
+    # Process each PDF file in the input directory
+    for filename in os.listdir(input_directory):
+        if filename.endswith(".pdf"):
+            input_pdf_path = os.path.join(input_directory, filename)
+            output_pdf_path = os.path.join(output_directory, filename)
 
-This script will add the specified text to all PDFs in a given directory. Make sure to replace `"/path/to/your/pdfs"` and `"/path/to/output/pdfs"` with your actual directories.
+            print(f"Processing {filename}...")
+
+            # Add text to the PDF
+            add_text_to_pdf(input_pdf_path, output_pdf_path, text)
+
+# Define the input and output directories
+input_directory = r"C:\Users\Admin\Desktop\Bunch PDF"
+output_directory = r"C:\Users\Admin\Desktop\Bunch PDF\Modified"
+text_to_add = "Xyz123"
+
+# Process all PDFs in the input directory
+process_pdfs(input_directory, output_directory, text_to_add)
